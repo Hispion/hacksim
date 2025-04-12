@@ -1,0 +1,1368 @@
+<html>
+<head>
+  <title>HackSim - Multiplayer Hacking Simulator</title>
+  <style>
+    /* Update the terminal scrollbar styling */
+    #terminal::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    #terminal::-webkit-scrollbar-track {
+      background: #001100;
+      border: 1px solid #0f0;
+    }
+
+    #terminal::-webkit-scrollbar-thumb {
+      background: #0f0;
+      border-radius: 5px;
+    }
+
+    #terminal::-webkit-scrollbar-thumb:hover {
+      background: #0a0;
+    }
+
+    /* Add scrollbar to player list too! */
+    .player-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .player-list::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .player-list::-webkit-scrollbar-track {
+      background: #001100;
+      border: 1px solid #0f0;
+    }
+
+    .player-list::-webkit-scrollbar-thumb {
+      background: #0f0;
+      border-radius: 5px;
+    }
+
+    .player-list::-webkit-scrollbar-thumb:hover {
+      background: #0a0;
+    }
+
+    /* Add these new styles for the context menu */
+    .context-menu {
+      position: fixed;
+      background: #001100;
+      border: 1px solid #0f0;
+      padding: 5px 0;
+      z-index: 1000;
+      display: none;
+    }
+
+    .context-menu-item {
+      padding: 8px 15px;
+      color: #0f0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .context-menu-item:hover {
+      background: #002200;
+    }
+
+    .context-menu-item.danger {
+      color: #f00;
+      border-top: 1px solid #0f0;
+    }
+
+    /* Keep rest of existing styles... */
+    * { 
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Courier New', monospace;
+    }
+    body {
+      background: #000;
+      color: #0f0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 20px;
+    }
+    #terminal {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      border: 1px solid #0f0;
+      margin-bottom: 10px;
+    }
+    #input {
+      display: flex;
+      gap: 10px;
+    }
+    input {
+      flex: 1;
+      background: #000;
+      border: 1px solid #0f0;
+      color: #0f0;
+      padding: 5px 10px;
+    }
+    .anim {
+      animation: flicker 0.5s infinite;
+    }
+    @keyframes flicker {
+      0% { opacity: 1; }
+      50% { opacity: 0.8; }
+      100% { opacity: 1; }
+    }
+    .success { 
+      color: #0f0;
+      text-shadow: 0 0 5px #0f0;
+    }
+    .error { 
+      color: #f00;
+      text-shadow: 0 0 5px #f00;
+    }
+    .warning { 
+      color: #ff0;
+      text-shadow: 0 0 5px #ff0;
+    }
+    .info { 
+      color: #0ff;
+      text-shadow: 0 0 5px #0ff;
+    }
+    .progress {
+      width: 100%;
+      height: 20px;
+      border: 1px solid #0f0;
+      margin: 10px 0;
+    }
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      background: #0f0;
+      transition: width 0.5s;
+    }
+    #stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 10px;
+    }
+    #inventory {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #0f0;
+    }
+    #mini-game {
+      display: none;
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #0f0;
+    }
+    .sequence {
+      font-family: monospace;
+      letter-spacing: 3px;
+      margin: 10px 0;
+    }
+    #tutorial-popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #001100;
+      border: 1px solid #0f0;
+      padding: 15px;
+      max-width: 300px;
+      display: none;
+    }
+    .tutorial-highlight {
+      border: 2px solid #0ff !important;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { border-color: #0ff; }
+      50% { border-color: #066; }
+      100% { border-color: #0ff; }
+    }
+    .cursor {
+      margin-left: 2px;
+      font-weight: bold;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .cursor.anim {
+      animation: blink 1s infinite;
+    }
+    #skip-tutorial, #back-to-menu {
+      position: absolute;
+      top: 10px;
+      background: #001100;
+      border: 1px solid #0f0;
+      color: #0f0;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    #skip-tutorial {
+      right: 10px;
+    }
+
+    #back-to-menu {
+      right: 110px;
+    }
+
+    #skip-tutorial:hover, #back-to-menu:hover {
+      background: #002200;
+    }
+
+    #fbi-alert {
+      color: #f00;
+      text-shadow: 0 0 10px #f00;
+      font-weight: bold;
+      animation: alert-flash 0.5s infinite;
+    }
+
+    @keyframes alert-flash {
+      0% { opacity: 1; }
+      50% { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
+
+    #fbi-status {
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #f00;
+      display: none;
+    }
+    .dollars {
+      color: #0f0;
+    }
+    .dollars::before {
+      content: '$';
+    }
+    .logo {
+      color: #0f0;
+      font-family: monospace;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 12px;
+      line-height: 1.2;
+      text-shadow: 0 0 5px #0f0;
+    }
+
+    #home-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    #home-screen.hidden {
+      display: none;
+    }
+
+    .player-list {
+      max-width: 600px;
+      width: 100%;
+      margin: 20px;
+      padding: 20px;
+      border: 1px solid #0f0;
+    }
+
+    .player-card {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      margin: 10px 0;
+      border: 1px solid #0f0;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .player-card:hover {
+      background: #002200;
+    }
+
+    .player-card img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid #0f0;
+    }
+
+    .player-info {
+      flex: 1;
+    }
+
+    .player-name {
+      color: #0f0;
+      font-size: 1.2em;
+      margin-bottom: 5px;
+    }
+
+    .player-stats {
+      color: #0a0;
+      font-size: 0.9em;
+    }
+
+    .new-account {
+      color: #0f0;
+      font-size: 1.2em;
+      padding: 10px 20px;
+      border: 1px solid #0f0;
+      background: transparent;
+      cursor: pointer;
+      margin: 10px;
+    }
+
+    .new-account:hover {
+      background: #002200;
+    }
+
+    .account-input {
+      background: #000;
+      border: 1px solid #0f0;
+      color: #0f0;
+      padding: 10px;
+      margin: 10px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .account-form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin: 20px;
+    }
+
+    .player-card.selected {
+      background: #003300;
+      border: 2px solid #0f0;
+    }
+
+    .no-accounts {
+      color: #0f0;
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div id="home-screen">
+    <pre id="logo" class="logo">
+      __  __     ______     ______     __  __     ______     __     __    __    
+      /\ \_\ \   /\  __ \   /\  ___\   /\ \/ /    /\  ___\   /\ \   /\ "-./  \   
+      \ \  __ \  \ \  __ \  \ \ \____  \ \  _"-.  \ \___  \  \ \ \  \ \ \-./\ \  
+       \ \_\ \_\  \ \_\ \_\  \ \_____\  \ \_\ \_\  \/\003_\  \ \_\  \ \_\ \ \_\ 
+        \/_/\/_/   \/_/\/_/   \/_____/   \/_/\/_/   \/_____/   \/_/   \/_/  \/_/
+    </pre>
+    <div class="player-list">
+      <div id="players"></div>
+      <div id="no-accounts" class="no-accounts">No saved accounts yet! Create one to begin.</div>
+    </div>
+    <button class="new-account" id="new-account-btn">Create New Account</button>
+    <div class="account-form" id="account-form" style="display: none;">
+      <input type="text" class="account-input" id="account-name" placeholder="Enter hacker alias..." maxlength="20">
+      <button class="new-account" id="create-account-btn">Start Hacking</button>
+    </div>
+  </div>
+  <button id="back-to-menu">Back to Menu</button>
+  <div id="stats">
+    <div>Level: <span id="level">1</span></div>
+    <div>Points: <span id="points">0</span></div>
+    <div>Systems Hacked: <span id="hacked">0</span></div>
+    <div>Crypto: <span id="crypto">0</span></div>
+    <div>Cash: <span id="dollars" class="dollars">0</span></div>
+  </div>
+  <div id="fbi-status">
+    <h3 class="fbi-alert"> FBI AGENT DETECTED </h3>
+    <div>Agent Level: <span id="agent-level">0</span></div>
+    <div>Time Remaining: <span id="agent-timer">0</span>s</div>
+  </div>
+  <div id="inventory">
+    <h3>Inventory:</h3>
+    <div id="tools"></div>
+  </div>
+  <div id="terminal"></div>
+  <div id="mini-game">
+    <p id="game-instruction"></p>
+    <div class="sequence" id="sequence"></div>
+    <input type="text" id="game-input" autocomplete="off">
+  </div>
+  <div class="progress">
+    <div class="progress-bar"></div>
+  </div>
+  <div id="input">
+    <span class="anim">></span>
+    <input type="text" id="cmd" autocomplete="off" autofocus>
+  </div>
+  <div id="tutorial-popup"></div>
+  <button id="skip-tutorial">Skip Tutorial</button>
+  
+  <!-- Add context menu HTML -->
+  <div class="context-menu" id="accountContextMenu">
+    <div class="context-menu-item" id="renameAccount">Rename Account</div>
+    <div class="context-menu-item danger" id="deleteAccount">Delete Account</div>
+  </div>
+
+  <script>
+    const terminal = document.getElementById('terminal');
+    const input = document.getElementById('cmd');
+    const progressBar = document.querySelector('.progress-bar');
+    const levelEl = document.getElementById('level');
+    const pointsEl = document.getElementById('points');
+    const hackedEl = document.getElementById('hacked');
+    const cryptoEl = document.getElementById('crypto');
+    const dollarsEl = document.getElementById('dollars');
+    const toolsEl = document.getElementById('tools');
+    const miniGame = document.getElementById('mini-game');
+    const gameInstruction = document.getElementById('game-instruction');
+    const sequenceEl = document.getElementById('sequence');
+    const gameInput = document.getElementById('game-input');
+    const tutorialPopup = document.getElementById('tutorial-popup');
+    const skipTutorialBtn = document.getElementById('skip-tutorial');
+    const fbiStatusEl = document.getElementById('fbi-status');
+    const agentLevelEl = document.getElementById('agent-level');
+    const agentTimerEl = document.getElementById('agent-timer');
+    const room = new WebsimSocket();
+    const homeScreen = document.getElementById('home-screen');
+    const playersEl = document.getElementById('players');
+    
+    let gameState = {
+      level: 1,
+      points: 0,
+      hackedSystems: 0, 
+      crypto: 0,
+      dollars: 0,
+      inventory: {
+        'Basic Decoder': 1,
+        'Port Scanner': 1
+      }
+    };
+    let currentTarget = null;
+    let portsOpened = 0;
+    let exploitRun = false;
+    const TYPE_SPEED = 25; // ms per character
+    const targets = [
+      {name: 'mainframe', difficulty: 3, reward: 150, ports: 3},
+      {name: 'database', difficulty: 2, reward: 100, ports: 2},
+      {name: 'firewall', difficulty: 4, reward: 200, ports: 4},
+      {name: 'router', difficulty: 1, reward: 50, ports: 1},
+      {name: 'server', difficulty: 2, reward: 100, ports: 2},
+      {name: 'network', difficulty: 3, reward: 150, ports: 3}
+    ];
+    const shop = [
+      {name: 'Advanced Decoder', price: 500, currency: 'crypto', effect: 'Increases hack success rate by giving 2 extra seconds per hack'},
+      {name: 'Crypto Miner', price: 1000, currency: 'crypto', effect: 'Generates 5 crypto every 10 seconds'},
+      {name: 'Security Bypass', price: 750, currency: 'crypto', effect: 'Reduces system difficulty level by 1'},
+      {name: 'Port Cracker', price: 300, currency: 'crypto', effect: 'Opens additional ports'},
+      {name: 'Anti-Trace VPN', price: 1500, currency: 'crypto', effect: 'Gives +10 seconds during FBI encounters'},
+      {name: 'System Glitch', price: 2000, currency: 'crypto', effect: 'Chance to instantly open all ports on scan'},
+      {name: 'Crypto Amplifier', price: 1200, currency: 'crypto', effect: 'Increases crypto rewards by 50%'},
+      {name: 'Time Dilator', price: 1800, currency: 'crypto', effect: 'Slows down hack timer by 25%'},
+      {name: 'Auto-Scanner', price: 900, currency: 'crypto', effect: 'Chance to automatically analyze after scan'},
+      {name: 'Reward Doubler', price: 2500, currency: 'crypto', effect: 'Doubles points from successful hacks'},
+      {name: 'Money Launderer', price: 100, currency: 'dollars', effect: 'Convert crypto to cash at better rates'},
+      {name: 'Cash Register', price: 200, currency: 'dollars', effect: 'Generates $5 every 30 seconds'},
+      {name: 'Business Front', price: 500, currency: 'dollars', effect: 'Increases dollar rewards by 50%'},
+      {name: 'Shell Company', price: 1000, currency: 'dollars', effect: 'Converts points to dollars periodically'},
+      {name: 'Offshore Account', price: 2000, currency: 'dollars', effect: 'Protects 50% of dollars during FBI raids'},
+      {name: 'Crypto Exchange', price: 1500, currency: 'dollars', effect: 'Convert dollars to crypto at 1:1 rate'},
+      {name: 'Money Launderer', price: 1500, currency: 'crypto', effect: 'Convert crypto to dollars at 1:1 rate'},
+    ];
+    const tutorial = {
+      currentStep: 0,
+      steps: [
+        { text: "Welcome to HackSim! I'll teach you the basics of hacking. First, let's scan for vulnerable targets. Type 'scan' to begin.", command: 'scan' },
+        { text: "Good! Once you've found a target, you'll want to analyze it. Type 'analyze' to get detailed information about security and rewards.", command: 'analyze' },
+        { text: "Before we can hack, we need to open the required ports. Use your Port Scanner by typing 'ports' to begin opening them.", command: 'ports' },
+        { text: "All ports must be opened before hacking. Keep using 'ports' command until all required ports are open.", command: 'ports' },
+        { text: "Now we can deploy our exploit. Type 'exploit' to prepare the system for hacking.", command: 'exploit' },
+        { text: "Time to breach! Type 'hack' to start the hacking sequence. Type the displayed code quickly!", command: 'hack' },
+        { text: "Successful hacks earn you points, crypto, and dollars! Be careful though - FBI agents may try to catch you.", command: 'status' },
+        { text: "Let's check out what tools we can buy. Type 'shop' to see available upgrades.", command: 'shop' },
+        { text: "You can buy tools with either crypto or dollars. Each has different effects!", command: 'inventory' },
+        { text: "You've completed the tutorial! Remember:\n- Watch for FBI agents\n- Buy upgrades to get stronger\n- Convert between crypto and dollars wisely\nType 'help' anytime to see commands.", command: 'help' }
+      ],
+      active: true,
+      showNext() {
+        if (this.currentStep >= this.steps.length) {
+          this.active = false;
+          tutorialPopup.style.display = 'none';
+          return;
+        }
+        const step = this.steps[this.currentStep];
+        tutorialPopup.innerHTML = `<div class="info">${step.text}</div>`;
+        tutorialPopup.style.display = 'block';
+        input.classList.add('tutorial-highlight');
+      }
+    };
+    const fbiAgent = {
+      active: false,
+      level: 0,
+      timeLeft: 0,
+      interval: null
+    };
+    const commands = {
+      'help': () => print('Available commands: help, scan, hack, clear, status, shop, inventory, analyze, ports, exploit, skip\nFBI agents may appear randomly after scanning. Complete hacks quickly to evade them!'),
+      'clear': () => terminal.innerHTML = '',
+      'status': () => print(`Level: ${gameState.level}\nPoints: ${gameState.points}\nSystems Hacked: ${gameState.hackedSystems}\nCrypto: ${gameState.crypto}\nCash: $${gameState.dollars}`),
+      'scan': scan,
+      'hack': initiateHack,
+      'shop': showShop,
+      'buy': (itemName) => buy(itemName),
+      'inventory': showInventory,
+      'analyze': analyze,
+      'ports': checkPorts,
+      'exploit': runExploit,
+      'tutorial': () => {
+        tutorial.active = true;
+        tutorial.currentStep = 0;
+        tutorial.showNext();
+      },
+      'skip': skipTutorial
+    };
+
+    function print(text, className = '') {
+      const p = document.createElement('p');
+      p.className = className;
+      let index = 0;
+      
+      const cursor = document.createElement('span');
+      cursor.className = 'cursor anim';
+      cursor.textContent = '█';
+      p.appendChild(cursor);
+      
+      terminal.appendChild(p);
+      
+      function typeNextChar() {
+        if (index < text.length) {
+          const char = text.charAt(index);
+          const textNode = document.createTextNode(char);
+          p.insertBefore(textNode, cursor);
+          index++;
+          setTimeout(typeNextChar, TYPE_SPEED);
+        } else {
+          cursor.remove();
+        }
+      }
+
+      typeNextChar();
+    }
+
+    function updateInventory() {
+      toolsEl.innerHTML = Object.entries(gameState.inventory)
+        .map(([item, count]) => `${item}: ${count}`)
+        .join('<br>');
+    }
+
+    function showInventory() {
+      print('Your Tools:');
+      Object.entries(gameState.inventory).forEach(([item, count]) => {
+        print(`${item}: ${count}`);
+      });
+      checkTutorial('inventory');
+    }
+
+    function checkPorts() {
+      if (!currentTarget) {
+        print('No target selected. Use "scan" first.', 'error');
+        return;
+      }
+
+      if (portsOpened >= currentTarget.ports) {
+        print('All required ports are already open!', 'warning');
+        return;
+      }
+
+      if (gameState.inventory['Port Scanner'] <= 0 && gameState.inventory['Port Cracker'] <= 0) {
+        print('No port scanning tools available!', 'error');
+        return;
+      }
+
+      let progressBar = document.querySelector('.progress-bar');
+      progressBar.style.width = '0%';
+
+      const portMessages = [
+        'Scanning port...',
+        'Analyzing response...',
+        'Bypassing firewall...',
+        'Port opened successfully!'
+      ];
+
+      let messageIndex = 0;
+      let progress = 0;
+
+      function updateProgress() {
+        if (messageIndex < portMessages.length) {
+          print(portMessages[messageIndex]);
+          progress += 25;
+          progressBar.style.width = progress + '%';
+          messageIndex++;
+          setTimeout(updateProgress, 500);
+        } else {
+          portsOpened++;
+          print(`Port ${portsOpened}/${currentTarget.ports} opened successfully!`, 'success');
+          
+          if (portsOpened === currentTarget.ports) {
+            print('All required ports are now open! You can now use the "exploit" command.', 'success');
+          } else {
+            print(`${currentTarget.ports - portsOpened} more ports needed.`, 'warning');
+          }
+
+          checkTutorial('ports');
+        }
+      }
+
+      updateProgress();
+    }
+
+    function runExploit() {
+      if (!currentTarget) {
+        print('No target selected. Use "scan" first.', 'error');
+        return;
+      }
+      if (exploitRun) {
+        print('Exploit already deployed on this target.', 'error');
+        return;
+      }
+
+      const exploitMessages = [
+        'Initializing exploit vectors...',
+        'Bypassing security measures...',
+        'Injecting payload...',
+        'Establishing backdoor...',
+        'Exploit successfully deployed!'
+      ];
+
+      let messageIndex = 0;
+      
+      function showNextMessage() {
+        if (messageIndex < exploitMessages.length) {
+          print(exploitMessages[messageIndex]);
+          messageIndex++;
+          setTimeout(showNextMessage, 800);
+        } else {
+          exploitRun = true;
+          print(exploitMessages[messageIndex], 'success');
+          checkTutorial('exploit');
+        }
+      }
+      
+      showNextMessage();
+    }
+
+    function showShop() {
+      print('Available Items:');
+      print('Crypto Items:', 'info');
+      shop.filter(item => item.currency === 'crypto').forEach(item => {
+        print(`${item.name} - ${item.price} crypto`, 'warning');
+        print(`  Effect: ${item.effect}`, 'warning');
+      });
+      print('\nDollar Items:', 'info');
+      shop.filter(item => item.currency === 'dollars').forEach(item => {
+        print(`${item.name} - $${item.price}`, 'warning');
+        print(`  Effect: ${item.effect}`, 'warning');
+      });
+      print('Use "buy <item name>" to purchase');
+      checkTutorial('shop');
+    }
+
+    function buy(itemName) {
+      const item = shop.find(i => i.name.toLowerCase() === itemName.toLowerCase());
+      if (!item) {
+        print('Item not found in shop', 'error');
+        return;
+      }
+
+      const currency = item.currency === 'crypto' ? gameState.crypto : gameState.dollars;
+      if (currency < item.price) {
+        print(`Not enough ${item.currency}!`, 'error');
+        return;
+      }
+      
+      if (item.currency === 'crypto') {
+        gameState.crypto -= item.price;
+      } else {
+        gameState.dollars -= item.price;
+      }
+      
+      gameState.inventory[item.name] = (gameState.inventory[item.name] || 0) + 1;
+      print(`Purchased ${item.name}!`, 'success');
+      updateStats();
+      updateInventory();
+    }
+
+    function analyze() {
+      if (!currentTarget) {
+        print('No target selected. Use "scan" first.', 'error');
+        return;
+      }
+      
+      print(`Analyzing ${currentTarget.name}...`);
+      print(`Difficulty Level: ${currentTarget.difficulty}`, 'warning');
+      print(`Required Ports: ${currentTarget.ports}`, 'warning');
+      print(`Potential Reward: ${currentTarget.reward} points`, 'warning');
+      print('Steps required:', 'warning');
+      print('1. Open required number of ports using port scanners', 'warning');
+      print('2. Deploy exploit using "exploit" command', 'warning');
+      print('3. Run "hack" command to breach the system', 'warning');
+      checkTutorial('analyze');
+    }
+
+    function scan() {
+      const scanMessages = [
+        'Scanning network...',
+        'Searching for vulnerabilities...',
+        'Analyzing open ports...',
+        'Checking security protocols...'
+      ];
+      
+      let messageIndex = 0;
+      
+      function showNextMessage() {
+        if (messageIndex < scanMessages.length) {
+          print(scanMessages[messageIndex]);
+          messageIndex++;
+          setTimeout(showNextMessage, 1000);
+        } else {
+          currentTarget = targets[Math.floor(Math.random() * targets.length)];
+          portsOpened = 0;
+          exploitRun = false;
+          
+          // System Glitch chance
+          if (gameState.inventory['System Glitch'] && Math.random() < 0.3) {
+            portsOpened = currentTarget.ports;
+            print('System Glitch activated - All ports opened!', 'success');
+          }
+          
+          print(`Found vulnerable ${currentTarget.name}!`, 'success');
+          
+          // Auto-Scanner chance
+          if (gameState.inventory['Auto-Scanner'] && Math.random() < 0.5) {
+            print('Auto-Scanner activated!', 'success');
+            setTimeout(() => commands['analyze'](), 1000);
+          } else {
+            print('Use "analyze" for target details', 'warning');
+          }
+          
+          if (!fbiAgent.active && Math.random() < (gameState.level * 0.1)) {
+            startFBIEncounter();
+          }
+          
+          checkTutorial('scan');
+        }
+      }
+      
+      showNextMessage();
+    }
+
+    function initiateHack() {
+      if (!currentTarget) {
+        print('No target selected. Use "scan" first.', 'error');
+        return;
+      }
+
+      if (portsOpened < currentTarget.ports) {
+        print(`Not enough ports opened. Required: ${currentTarget.ports}, Opened: ${portsOpened}`, 'error');
+        return;
+      }
+
+      if (!exploitRun) {
+        print('No exploit deployed. Use "exploit" command first.', 'error');
+        return;
+      }
+
+      startHackingMinigame();
+      checkTutorial('hack');
+    }
+
+    function checkTutorial(command) {
+      if (tutorial.active && tutorial.steps[tutorial.currentStep].command === command) {
+        tutorial.currentStep++;
+        tutorial.showNext();
+      }
+    }
+
+    function startHackingMinigame() {
+      print('Initiating system breach...');
+      const sequence = generateSequence();
+      miniGame.style.display = 'block';
+      input.disabled = true;
+      gameInstruction.textContent = 'Type the sequence exactly to hack the system:';
+      sequenceEl.textContent = sequence;
+      
+      gameInput.value = '';
+      gameInput.focus();
+      
+      // Calculate timer duration with upgrades
+      let timeLimit = 10000; // Base 10 seconds
+      
+      if (gameState.inventory['Advanced Decoder']) {
+        timeLimit += gameState.inventory['Advanced Decoder'] * 2000; // +2 seconds per decoder
+      }
+      
+      if (gameState.inventory['Time Dilator']) {
+        timeLimit *= 1.25; // 25% more time
+      }
+      
+      let timeoutId = setTimeout(() => {
+        miniGame.style.display = 'none';
+        input.disabled = false;
+        print('Hack failed - Time expired!', 'error');
+      }, timeLimit);
+      
+      gameInput.onkeyup = (e) => {
+        if (e.key === 'Enter') {
+          clearTimeout(timeoutId);
+          if (gameInput.value === sequence) {
+            completeHack(true);
+          } else {
+            completeHack(false);
+          }
+          miniGame.style.display = 'none';
+          input.disabled = false;
+          gameInput.onkeyup = null;
+        }
+      };
+    }
+
+    function generateSequence() {
+      const chars = '0123456789ABCDEF';
+      let sequence = '';
+      for (let i = 0; i < 8; i++) {
+        sequence += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return sequence;
+    }
+
+    function completeHack(success) {
+      if (success) {
+        let rewardPoints = currentTarget.reward * gameState.level;
+        let rewardCrypto = Math.floor(currentTarget.reward / 10);
+        let rewardDollars = Math.floor(currentTarget.reward / 20);
+        
+        // Apply Reward Doubler
+        if (gameState.inventory['Reward Doubler']) {
+          rewardPoints *= 2;
+        }
+        
+        // Apply Crypto Amplifier
+        if (gameState.inventory['Crypto Amplifier']) {
+          rewardCrypto = Math.floor(rewardCrypto * 1.5);
+        }
+
+        // Apply Business Front
+        if (gameState.inventory['Business Front']) {
+          rewardDollars = Math.floor(rewardDollars * 1.5);
+        }
+        
+        print(`Successfully hacked ${currentTarget.name}!`, 'success');
+        gameState.points += rewardPoints;
+        gameState.crypto += rewardCrypto;
+        gameState.dollars += rewardDollars;
+        gameState.hackedSystems++;
+        
+        print(`Rewards: ${rewardPoints} points, ${rewardCrypto} crypto, $${rewardDollars}`, 'success');
+        
+        if (fbiAgent.active) {
+          endFBIEncounter(true);
+        }
+        
+        if (gameState.hackedSystems % 3 === 0) {
+          gameState.level++;
+          print('Level up!', 'success');
+          print('All systems are now more difficult but offer better rewards!', 'warning');
+        }
+      } else {
+        print('Hack failed! Incorrect sequence entered.', 'error');
+        gameState.points = Math.max(0, gameState.points - 25);
+        
+        if (fbiAgent.active) {
+          endFBIEncounter(false);
+        }
+      }
+
+      currentTarget = null;
+      progressBar.style.width = '0%';
+      updateStats();
+    }
+
+    function updateStats() {
+      levelEl.textContent = gameState.level;
+      pointsEl.textContent = gameState.points;
+      hackedEl.textContent = gameState.hackedSystems;
+      cryptoEl.textContent = gameState.crypto;
+      dollarsEl.textContent = gameState.dollars;
+    }
+
+    function startFBIEncounter() {
+      if (fbiAgent.active) return;
+      
+      fbiAgent.active = true;
+      fbiAgent.level = Math.min(Math.floor(gameState.level * 1.5), 10);
+      
+      // Add bonus time from Anti-Trace VPN
+      fbiAgent.timeLeft = 30 + (gameState.inventory['Anti-Trace VPN'] ? 10 : 0);
+      
+      print('!!! FBI AGENT DETECTED !!!', 'fbi-alert');
+      print('Agent is attempting to trace your connection!', 'error');
+      print('You must complete a hack within the time limit or lose crypto!', 'error');
+      
+      fbiStatusEl.style.display = 'block';
+      updateFBIStatus();
+      
+      fbiAgent.interval = setInterval(() => {
+        fbiAgent.timeLeft--;
+        updateFBIStatus();
+        
+        if (fbiAgent.timeLeft <= 0) {
+          endFBIEncounter(false);
+        }
+      }, 1000);
+    }
+
+    function endFBIEncounter(escaped) {
+      clearInterval(fbiAgent.interval);
+      fbiAgent.active = false;
+      fbiStatusEl.style.display = 'none';
+      
+      if (escaped) {
+        print('Successfully evaded FBI trace!', 'success');
+        const cryptoReward = 100 * fbiAgent.level;
+        const dollarsReward = 50 * fbiAgent.level;
+        const pointsReward = 250 * fbiAgent.level;
+        
+        gameState.crypto += cryptoReward;
+        gameState.dollars += dollarsReward;
+        gameState.points += pointsReward;
+        
+        print(`Bonus reward: ${cryptoReward} crypto, $${dollarsReward}, and ${pointsReward} points!`, 'success');
+      } else {
+        print('FBI agent successfully traced your location!', 'error');
+        const cryptoLoss = 50 * fbiAgent.level;
+        let dollarsLoss = 25 * fbiAgent.level;
+        
+        // Offshore Account protection
+        if (gameState.inventory['Offshore Account']) {
+          dollarsLoss = Math.floor(dollarsLoss * 0.5);
+          print('Offshore Account protected 50% of your dollars!', 'success');
+        }
+        
+        print(`Lost ${cryptoLoss} crypto and $${dollarsLoss}!`, 'error');
+        gameState.crypto = Math.max(0, gameState.crypto - cryptoLoss);
+        gameState.dollars = Math.max(0, gameState.dollars - dollarsLoss);
+      }
+      
+      updateStats();
+    }
+
+    function updateFBIStatus() {
+      agentLevelEl.textContent = fbiAgent.level;
+      agentTimerEl.textContent = fbiAgent.timeLeft;
+    }
+
+    function skipTutorial() {
+      tutorial.active = false;
+      tutorial.currentStep = tutorial.steps.length;
+      tutorialPopup.style.display = 'none';
+      input.classList.remove('tutorial-highlight');
+      print('Tutorial skipped. Type "help" for available commands.', 'info');
+    }
+
+    function backToMenu() {
+      // Reset game state
+      gameState = {
+        level: 1,
+        points: 0,
+        hackedSystems: 0,
+        crypto: 0,
+        dollars: 0,
+        inventory: {
+          'Basic Decoder': 1,
+          'Port Scanner': 1
+        }
+      };
+      
+      // Clear terminal
+      terminal.innerHTML = '';
+      
+      // Show home screen
+      homeScreen.classList.remove('hidden');
+      
+      // Reset tutorial
+      tutorial.active = false;
+      tutorial.currentStep = 0;
+      tutorialPopup.style.display = 'none';
+      input.classList.remove('tutorial-highlight');
+      
+      // Reset any ongoing FBI encounters
+      if (fbiAgent.active) {
+        clearInterval(fbiAgent.interval);
+        fbiAgent.active = false;
+        fbiStatusEl.style.display = 'none';
+      }
+      
+      // Reset current target and game state
+      currentTarget = null;
+      portsOpened = 0;
+      exploitRun = false;
+      
+      // Update UI
+      updateStats();
+      updateInventory();
+    }
+
+    async function loadGame(username, accountName) {
+      const saves = await room.collection('hacksim_saves').filter({
+        username,
+        account_name: accountName
+      }).getList();
+      
+      if (saves && saves.length > 0) {
+        const save = saves[0];
+        gameState = save.state;
+        updateStats();
+        updateInventory();
+      }
+
+      // Hide home screen and start game
+      homeScreen.classList.add('hidden');
+      print(`Welcome back, ${accountName}! Your hacking tools are ready.`, 'success');
+      tutorial.showNext();
+    }
+
+    async function createNewAccount(accountName) {
+      const username = room.party.client.username;
+      
+      // Create fresh game state for new hackers! 
+      const saveData = {
+        username,
+        account_name: accountName,
+        state: {
+          level: 1,
+          points: 0,
+          hackedSystems: 0,
+          crypto: 0,
+          dollars: 0,
+          inventory: {
+            'Basic Decoder': 1,
+            'Port Scanner': 1
+          }
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      await room.collection('hacksim_saves').create(saveData);
+      loadGame(username, accountName);
+    }
+
+    // Save game state periodically
+    setInterval(async () => {
+      const username = room.party.client.username;
+      const accountName = document.querySelector('.player-card.selected')?.querySelector('.player-name')?.textContent.split(' (@')[0];
+      
+      if (!username || !accountName) return;
+
+      const saveData = {
+        username,
+        account_name: accountName,
+        state: gameState,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const saves = await room.collection('hacksim_saves').filter({
+        username,
+        account_name: accountName
+      }).getList();
+
+      if (saves && saves.length > 0) {
+        await room.collection('hacksim_saves').update(saves[0].id, saveData);
+      } else {
+        await room.collection('hacksim_saves').create(saveData);
+      }
+    }, 10000);
+
+    // Load saved games for each player
+    room.collection('hacksim_saves').subscribe(async (saves) => {
+      playersEl.innerHTML = '';
+      const noAccountsEl = document.getElementById('no-accounts');
+      let foundSaves = false;
+
+      // Only get saves for the current user
+      const currentUsername = room.party.client.username;
+      const userSaves = saves.filter(save => save.username === currentUsername);
+      
+      if (userSaves.length > 0) {
+        foundSaves = true;
+        noAccountsEl.style.display = 'none';
+        
+        userSaves.forEach(save => {
+          const div = document.createElement('div');
+          div.className = 'player-card';
+          div.innerHTML = `
+            <img src="https://images.websim.ai/avatar/${currentUsername}" alt="${currentUsername}'s avatar">
+            <div class="player-info">
+              <div class="player-name">${save.account_name} (@${currentUsername})</div>
+              <div class="player-stats">
+                Level: ${save.state.level} | 
+                Points: ${save.state.points} | 
+                Crypto: ${save.state.crypto}
+              </div>
+            </div>
+          `;
+          
+          // Add context menu functionality
+          div.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const menu = document.getElementById('accountContextMenu');
+            
+            // Calculate menu dimensions
+            const menuWidth = menu.offsetWidth;
+            const menuHeight = menu.offsetHeight;
+            
+            // Calculate maximum x and y positions
+            const maxX = window.innerWidth - menuWidth;
+            const maxY = window.innerHeight - menuHeight;
+            
+            // Position menu, keeping it within viewport bounds
+            let x = e.pageX;
+            let y = e.pageY;
+            
+            if (x > maxX) x = maxX;
+            if (y > maxY) y = maxY;
+            
+            menu.style.display = 'block';
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            
+            // Store the save data and element for the context menu actions
+            menu.dataset.saveId = save.id;
+            menu.dataset.accountName = save.account_name;
+            menu.dataset.cardElement = div.id = 'card-' + save.id;
+          });
+
+          div.onclick = () => {
+            document.querySelectorAll('.player-card').forEach(card => card.classList.remove('selected'));
+            div.classList.add('selected');
+            gameState = save.state;
+            updateStats();
+            updateInventory();
+            homeScreen.classList.add('hidden');
+            print(`Welcome back, ${save.account_name}! Your hacking tools are ready.`, 'success');
+            tutorial.showNext();
+          };
+          playersEl.appendChild(div);
+        });
+      }
+
+      if (!foundSaves) {
+        noAccountsEl.style.display = 'block';
+      }
+    });
+
+    // Exciting new account creation - Now with duplicate checking! 
+    document.getElementById('new-account-btn').addEventListener('click', () => {
+      document.getElementById('account-form').style.display = 'flex';
+    });
+
+    document.getElementById('create-account-btn').addEventListener('click', async () => {
+      const accountName = document.getElementById('account-name').value.trim();
+      const accountInput = document.getElementById('account-name');
+      
+      if (!accountName) {
+        print('Please enter a hacker alias!', 'error');
+        accountInput.classList.add('error');
+        setTimeout(() => accountInput.classList.remove('error'), 2000);
+        return;
+      }
+      
+      try {
+        // Check for duplicate account names for THIS user
+        const existingSaves = await room.collection('hacksim_saves').filter({
+          username: room.party.client.username,
+        }).getList();
+        
+        if (existingSaves.some(save => save.account_name.toLowerCase() === accountName.toLowerCase())) {
+          print('You already have an account with that name! Choose another alias.', 'error');
+          accountInput.classList.add('error');
+          setTimeout(() => accountInput.classList.remove('error'), 2000);
+          return;
+        }
+        
+        await createNewAccount(accountName);
+        document.getElementById('account-form').style.display = 'none';
+        accountInput.value = '';
+        
+      } catch (err) {
+        print('Failed to create account! Please try again.', 'error');
+        console.error('Account creation error:', err);
+      }
+    });
+
+    // Autosave timer
+    setInterval(() => {
+      const selectedCard = document.querySelector('.player-card.selected');
+      if (selectedCard) {
+        const accountName = selectedCard.querySelector('.player-name').textContent.split(' (@')[0];
+        const username = room.party.client.username;
+        saveGame(username, accountName);
+      }
+    }, 30000); // Autosave every 30 seconds
+
+    setInterval(() => {
+      if (gameState.inventory['Crypto Miner']) {
+        const amount = gameState.inventory['Crypto Miner'] * 5;
+        gameState.crypto += amount;
+        updateStats();
+      }
+    }, 10000);
+
+    // Add passive income from Cash Register and Shell Company
+    setInterval(() => {
+      if (gameState.inventory['Cash Register']) {
+        const amount = gameState.inventory['Cash Register'] * 5;
+        gameState.dollars += amount;
+        updateStats();
+      }
+      
+      if (gameState.inventory['Shell Company']) {
+        const pointsToConvert = Math.min(gameState.points, 100 * gameState.inventory['Shell Company']);
+        if (pointsToConvert >= 100) {
+          const dollarsEarned = Math.floor(pointsToConvert / 100);
+          gameState.points -= dollarsEarned * 100;
+          gameState.dollars += dollarsEarned;
+          updateStats();
+        }
+      }
+    }, 30000);
+
+    // Add Money Launderer functionality
+    setInterval(() => {
+      if (gameState.inventory['Money Launderer'] && gameState.crypto >= 100) {
+        const cryptoToConvert = Math.min(gameState.crypto, 100 * gameState.inventory['Money Launderer']);
+        const dollarsEarned = Math.floor(cryptoToConvert / 100 * 1.5); // 1.5x better rate
+        gameState.crypto -= cryptoToConvert;
+        gameState.dollars += dollarsEarned;
+        updateStats();
+      }
+    }, 15000);
+
+    // Convert dollars to crypto with Crypto Exchange
+    // Convert crypto to dollars with Money Launderer  
+    setInterval(() => {
+      if (gameState.inventory['Crypto Exchange'] && gameState.dollars >= 100) {
+        const dollarsToConvert = Math.min(gameState.dollars, 100 * gameState.inventory['Crypto Exchange']);
+        const cryptoEarned = dollarsToConvert; // 1:1 conversion rate
+        gameState.dollars -= dollarsToConvert;
+        gameState.crypto += cryptoEarned;
+        updateStats();
+      }
+
+      if (gameState.inventory['Money Launderer'] && gameState.crypto >= 100) {
+        const cryptoToConvert = Math.min(gameState.crypto, 100 * gameState.inventory['Money Launderer']);
+        const dollarsEarned = cryptoToConvert; // 1:1 conversion rate
+        gameState.crypto -= cryptoToConvert;
+        gameState.dollars += dollarsEarned;
+        updateStats();
+      }
+    }, 10000);
+
+    const logo = document.getElementById('logo');
+    logo.style.opacity = '0';
+
+    setTimeout(() => {
+      logo.style.transition = 'opacity 2s';
+      logo.style.opacity = '1';
+    }, 100);
+
+    print('Welcome to HackSim v1.0');
+    print('Starting tutorial...', 'info'); 
+    print('Type "help" for available commands or "tutorial" to restart the tutorial.', 'info');
+    updateInventory();
+    tutorial.showNext();
+    input.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        const fullCmd = input.value.toLowerCase().trim();
+        print(`> ${fullCmd}`);
+        input.classList.remove('tutorial-highlight');
+        
+        const [cmd, ...args] = fullCmd.split(' ');
+        
+        if (cmd === 'buy' && args.length > 0) {
+          buy(args.join(' '));
+        } else if (commands[cmd]) {
+          commands[cmd]();
+        } else {
+          print('Unknown command. Type "help" for available commands.', 'error');
+        }
+        
+        input.value = '';
+      }
+    });
+
+    skipTutorialBtn.addEventListener('click', skipTutorial);
+
+    // Add context menu handlers
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('accountContextMenu');
+      if (e.target.closest('.context-menu') === null) {
+        menu.style.display = 'none';
+      }
+    });
+
+    document.getElementById('renameAccount').addEventListener('click', async () => {
+      const menu = document.getElementById('accountContextMenu');
+      const saveId = menu.dataset.saveId;
+      const oldName = menu.dataset.accountName;
+      
+      const newName = prompt(`Enter new name for "${oldName}":`, oldName);
+      if (newName && newName.trim()) {
+        try {
+          await room.collection('hacksim_saves').update(saveId, {
+            account_name: newName.trim()
+          });
+          print(`Account renamed to ${newName}!`, 'success');
+        } catch (err) {
+          print('Failed to rename account!', 'error');
+        }
+      }
+      menu.style.display = 'none';
+    });
+
+    document.getElementById('deleteAccount').addEventListener('click', async () => {
+      const menu = document.getElementById('accountContextMenu');
+      const saveId = menu.dataset.saveId;
+      const accountName = menu.dataset.accountName;
+      
+      if (confirm(`Are you sure you want to delete "${accountName}"? This cannot be undone!`)) {
+        try {
+          await room.collection('hacksim_saves').delete(saveId);
+          document.getElementById('card-' + saveId).remove();
+          print(`Account deleted successfully!`, 'success');
+          
+          // Show no accounts message if this was the last one
+          if (!playersEl.children.length) {
+            document.getElementById('no-accounts').style.display = 'block';
+          }
+        } catch (err) {
+          print('Failed to delete account!', 'error');
+        }
+      }
+      menu.style.display = 'none';
+    });
+
+    document.getElementById('back-to-menu').addEventListener('click', backToMenu);
+  </script>
+</body>
+</html>
